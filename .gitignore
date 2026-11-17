@@ -1,0 +1,21 @@
+# Environment & Database
+.env
+smartcare.db
+*.db
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+
+# Node & Frontend
+node_modules/
+dist/
+.DS_Store
+
+# Logs
+*.log
