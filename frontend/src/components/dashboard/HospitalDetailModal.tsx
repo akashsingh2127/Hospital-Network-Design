@@ -7,11 +7,13 @@ import { SourceBadge } from '../common/SourceBadge';
 interface HospitalDetailModalProps {
   hospital: Hospital | null;
   onClose: () => void;
+  onSelectDevice?: (deviceId: string) => void;
 }
 
 export const HospitalDetailModal: React.FC<HospitalDetailModalProps> = ({
   hospital,
   onClose,
+  onSelectDevice,
 }) => {
   if (!hospital) return null;
 
@@ -127,17 +129,27 @@ export const HospitalDetailModal: React.FC<HospitalDetailModalProps> = ({
                 hospital.devices.map((d) => (
                   <div
                     key={d.id}
-                    className="p-3 bg-[#0A0E17] border border-[#1E293B] rounded-lg flex items-center justify-between"
+                    onClick={() => {
+                      onClose();
+                      onSelectDevice?.(d.id);
+                    }}
+                    className="p-3 bg-[#0A0E17] hover:bg-[#162238] border border-[#1E293B] hover:border-sky-500/40 rounded-lg flex items-center justify-between cursor-pointer transition-all group"
                   >
                     <div>
-                      <div className="font-semibold text-xs text-slate-200">{d.name}</div>
+                      <div className="font-semibold text-xs text-slate-200 group-hover:text-sky-300 transition-colors flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                        {d.name}
+                      </div>
                       <div className="text-[11px] text-slate-400 font-mono mt-0.5">
                         {d.role} &bull; {d.ip_address}
                       </div>
                     </div>
-                    <Badge variant="status" status={d.status}>
-                      {d.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="status" status={d.status}>
+                        {d.status}
+                      </Badge>
+                      <span className="text-[10px] text-sky-400 font-sans group-hover:underline">&rarr;</span>
+                    </div>
                   </div>
                 ))
               ) : (

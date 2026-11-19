@@ -11,10 +11,11 @@ class PacketTracerIntegration:
     """
     Dedicated integration layer for Cisco Packet Tracer.
     Inspects process state, open multi-user/IPC ports, and the loaded .pkt file.
+    Tracks file modification time (mtime) and cryptographic hash to detect save events.
     """
 
     @staticmethod
-    def _test_tcp_port(host: str, port: int, timeout: float = 0.5) -> bool:
+    def _test_tcp_port(host: str, port: int, timeout: float = 0.3) -> bool:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(timeout)
         try:
@@ -60,36 +61,41 @@ class PacketTracerIntegration:
         pkt_exists = os.path.exists(pkt_path)
         pkt_size = None
         pkt_hash = None
+        pkt_mtime = None
 
         if pkt_exists:
             try:
                 pkt_size = os.path.getsize(pkt_path)
+                pkt_mtime = os.path.getmtime(pkt_path)
                 hasher = hashlib.sha256()
                 with open(pkt_path, 'rb') as f:
-                    # Read in chunks to compute hash safely
                     for chunk in iter(lambda: f.read(65536), b''):
                         hasher.update(chunk)
-                pkt_hash = hasher.hexdigest()[:16] + "..."
+                pkt_hash = hasher.hexdigest()
             except Exception:
                 pass
 
-        # Determine overall integration state
+        # Determine overall integration state and freshness
         if is_running and multiuser_open and pkt_exists:
             overall_state = "CONNECTED"
             data_source = DataSource.PACKET_TRACER
+            freshness = "CURRENT"
         elif is_running:
             overall_state = "PARTIAL"
             data_source = DataSource.PACKET_TRACER
+            freshness = "CURRENT"
         else:
             overall_state = "DISCONNECTED"
             data_source = DataSource.BACKEND_PROBE
+            freshness = "STALE"
 
         supported = [
             "Local Cisco Packet Tracer Process Verification (v9.0.1)",
             "TCP Multiuser Port Detection (Port 39000)",
             "TCP Internal IPC Socket Monitoring (Port 38000)",
             "Local Progress/HTTP Service Status (Port 8001)",
-            "Topology File Verification & SHA-256 Hash Integrity Tracking",
+            "File Modification & Cryptographic SHA-256 Hash Tracking",
+            "State Snapshot Diffs Across Application Restarts",
             "Non-destructive Topology Inspection (Preserving .pkt integrity)"
         ]
 
@@ -109,10 +115,37 @@ class PacketTracerIntegration:
             active_pkt_detected=pkt_exists,
             pkt_file_path=pkt_path if pkt_exists else None,
             pkt_file_size=pkt_size,
-            pkt_file_hash=pkt_hash,
+            pkt_file_hash=pkt_hash[:16] + "..." if pkt_hash else None,
+            pkt_file_mtime=pkt_mtime,
             last_checked=datetime.utcnow(),
             overall_integration_state=overall_state,
             supported_capabilities=supported,
             unsupported_capabilities=unsupported,
-            data_source_mode=data_source
+            data_source_mode=data_source,
+            freshness=freshness
         )
+
+    @classmethod
+    def get_state_fingerprint(cls) -> Dict[str, Any]:
+        """
+        Returns a light dictionary fingerprint of current observable state.
+        Used by the sync service to detect changes between polls and across restarts.
+        """
+        pt_proc = cls._find_pt_process()
+        multiuser_open = cls._test_tcp_port(settings.PT_HOST, settings.PT_PORT_MULTIUSER)
+        http_login_open = cls._test_tcp_port(settings.PT_HOST, settings.PT_PORT_HTTP)
+        
+        pkt_path = settings.PKT_DEFAULT_FILE
+        pkt_exists = os.path.exists(pkt_path)
+        pkt_mtime = os.path.getmtime(pkt_path) if pkt_exists else None
+        pkt_size = os.path.getsize(pkt_path) if pkt_exists else None
+
+        return {
+            "pt_running": pt_proc is not None,
+            "pt_pid": pt_proc['pid'] if pt_proc else None,
+            "multiuser_port_open": multiuser_open,
+            "http_login_port_open": http_login_open,
+            "pkt_exists": pkt_exists,
+            "pkt_mtime": pkt_mtime,
+            "pkt_size": pkt_size,
+        }

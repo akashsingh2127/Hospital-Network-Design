@@ -15,9 +15,10 @@ import { HospitalDetailModal } from './HospitalDetailModal';
 
 interface HospitalCardsGridProps {
   hospitals: Hospital[];
+  onSelectDevice?: (deviceId: string) => void;
 }
 
-export const HospitalCardsGrid: React.FC<HospitalCardsGridProps> = ({ hospitals }) => {
+export const HospitalCardsGrid: React.FC<HospitalCardsGridProps> = ({ hospitals, onSelectDevice }) => {
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
 
   return (
@@ -29,7 +30,7 @@ export const HospitalCardsGrid: React.FC<HospitalCardsGridProps> = ({ hospitals 
             Hospital Network Locations
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Six specialized healthcare sites connected via ISP Core Router (R0) and AS 100
+            {hospitals.length} Healthcare facilities interconnected via WAN infrastructure
           </p>
         </div>
         <span className="text-xs text-slate-400 font-mono">Click card for VLAN & Device breakdown</span>
@@ -108,6 +109,7 @@ export const HospitalCardsGrid: React.FC<HospitalCardsGridProps> = ({ hospitals 
       <HospitalDetailModal
         hospital={selectedHospital}
         onClose={() => setSelectedHospital(null)}
+        onSelectDevice={onSelectDevice}
       />
     </div>
   );

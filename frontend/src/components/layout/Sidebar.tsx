@@ -5,70 +5,72 @@ import {
   GitFork,
   Server,
   Layers,
-  Route,
-  ShieldCheck,
   Radio,
   Activity,
   AlertTriangle,
-  BarChart3,
   FileText,
   Activity as HeartbeatIcon,
   Cable
 } from 'lucide-react';
 import { IntegrationStatus } from '../../types/network';
 
+export type DashboardSection = 
+  | 'overview'
+  | 'hospitals'
+  | 'topology'
+  | 'devices'
+  | 'vlans'
+  | 'health'
+  | 'services'
+  | 'alerts'
+  | 'logs';
+
 interface SidebarProps {
-  currentTab: string;
-  onSelectTab: (tab: string) => void;
+  currentTab: DashboardSection;
+  onSelectTab: (tab: DashboardSection) => void;
   integration?: IntegrationStatus;
+  activeAlertsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   onSelectTab,
-  integration
+  integration,
+  activeAlertsCount = 0
 }) => {
-  const navSections = [
+  const navGroups = [
     {
-      title: 'Operations',
+      title: 'Core Monitoring',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isFunctional: true },
+        { id: 'overview' as DashboardSection, label: 'Network Overview', icon: LayoutDashboard },
+        { id: 'hospitals' as DashboardSection, label: 'Hospital Locations', icon: Building2 },
+        { id: 'topology' as DashboardSection, label: 'Network Topology', icon: GitFork },
       ],
     },
     {
-      title: 'Infrastructure',
+      title: 'Infrastructure & IP',
       items: [
-        { id: 'hospitals', label: 'Hospital Locations', icon: Building2, isFunctional: false },
-        { id: 'topology', label: 'Network Topology', icon: GitFork, isFunctional: false },
-        { id: 'devices', label: 'Device Management', icon: Server, isFunctional: false },
-        { id: 'vlans', label: 'VLAN & IP Management', icon: Layers, isFunctional: false },
+        { id: 'devices' as DashboardSection, label: 'Device Monitoring', icon: Server },
+        { id: 'vlans' as DashboardSection, label: 'VLAN & IP Information', icon: Layers },
+        { id: 'services' as DashboardSection, label: 'Network Services', icon: Radio },
       ],
     },
     {
-      title: 'Routing & Security',
+      title: 'Health & Observability',
       items: [
-        { id: 'routing', label: 'Routing Management', icon: Route, isFunctional: false },
-        { id: 'nat_security', label: 'NAT & Security', icon: ShieldCheck, isFunctional: false },
-        { id: 'services', label: 'Network Services', icon: Radio, isFunctional: false },
-      ],
-    },
-    {
-      title: 'Telemetry & Logs',
-      items: [
-        { id: 'monitoring', label: 'Network Monitoring', icon: Activity, isFunctional: false },
-        { id: 'alerts', label: 'Alerts & Incidents', icon: AlertTriangle, isFunctional: false },
-        { id: 'analytics', label: 'Analytics & Reports', icon: BarChart3, isFunctional: false },
-        { id: 'audit', label: 'Audit Logs', icon: FileText, isFunctional: false },
+        { id: 'health' as DashboardSection, label: 'Network Health', icon: Activity },
+        { id: 'alerts' as DashboardSection, label: 'Alerts & Events', icon: AlertTriangle, count: activeAlertsCount },
+        { id: 'logs' as DashboardSection, label: 'Activity Logs', icon: FileText },
       ],
     },
   ];
 
   return (
-    <aside className="w-64 bg-[#0D131F] border-r border-[#1E293B] flex flex-col h-screen select-none shrink-0">
+    <aside className="w-64 bg-[#0D131F] border-r border-[#1E293B] flex flex-col h-screen select-none shrink-0 sticky top-0">
       {/* Brand Header */}
       <div className="h-16 px-5 border-b border-[#1E293B] flex items-center gap-3">
-        <div className="w-9 h-9 rounded-lg bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
-          <HeartbeatIcon className="w-5 h-5 text-sky-400" />
+        <div className="w-9 h-9 rounded-lg bg-sky-600/20 border border-sky-500/40 flex items-center justify-center text-sky-400 shadow-inner shadow-sky-500/10">
+          <HeartbeatIcon className="w-5 h-5 text-sky-400 animate-pulse" />
         </div>
         <div>
           <div className="flex items-center gap-1.5">
@@ -81,31 +83,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Navigation List */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {navSections.map((section) => (
-          <div key={section.title}>
+        {navGroups.map((group) => (
+          <div key={group.title}>
             <h4 className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 font-mono">
-              {section.title}
+              {group.title}
             </h4>
             <div className="space-y-1">
-              {section.items.map((item) => {
+              {group.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = currentTab === item.id;
 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      if (item.isFunctional) {
-                        onSelectTab(item.id);
-                      }
-                    }}
-                    disabled={!item.isFunctional}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+                    onClick={() => onSelectTab(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-sky-600/20 text-sky-400 border border-sky-500/30'
-                        : item.isFunctional
-                        ? 'text-slate-300 hover:bg-[#162238] hover:text-slate-100'
-                        : 'text-slate-400 cursor-not-allowed hover:bg-transparent'
+                        ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm shadow-sky-950'
+                        : 'text-slate-300 hover:bg-[#162238] hover:text-slate-100 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -113,9 +108,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span>{item.label}</span>
                     </div>
 
-                    {!item.isFunctional && (
-                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#162238] text-slate-400 border border-slate-700">
-                        Future
+                    {item.count !== undefined && item.count > 0 && (
+                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-full bg-rose-950 text-rose-400 border border-rose-800">
+                        {item.count}
                       </span>
                     )}
                   </button>
@@ -134,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Cisco Packet Tracer
           </span>
           <span
-            className={`font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+            className={`font-mono text-[10px] font-semibold px-2 py-0.5 rounded border ${
               integration?.overall_integration_state === 'CONNECTED'
                 ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800'
                 : integration?.overall_integration_state === 'PARTIAL'
@@ -147,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <div className="text-[11px] text-slate-400 flex justify-between font-mono">
           <span>PT 9.0.1 (AS 100)</span>
-          <span>19 VLANs</span>
+          <span>19 VLANs / 24 Devs</span>
         </div>
       </div>
     </aside>

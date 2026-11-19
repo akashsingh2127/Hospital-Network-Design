@@ -18,6 +18,7 @@ interface HeaderProps {
   lastRefresh?: string;
   isRefreshing: boolean;
   onRefresh: () => void;
+  wsStatus?: 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' | 'ERROR';
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   lastRefresh,
   isRefreshing,
   onRefresh,
+  wsStatus = 'CONNECTED',
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -97,6 +99,18 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-300 font-mono bg-[#111827] px-3 py-1.5 rounded border border-[#1E293B]">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span>{currentTime || 'Synchronizing...'}</span>
+        </div>
+
+        {/* WebSocket Live Sync Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#111827] border border-[#1E293B] text-xs font-mono">
+          <span className={`w-2 h-2 rounded-full ${
+            wsStatus === 'CONNECTED' ? 'bg-emerald-400 animate-pulse' :
+            wsStatus === 'CONNECTING' ? 'bg-amber-400 animate-ping' :
+            'bg-rose-500'
+          }`} />
+          <span className="text-slate-300">
+            {wsStatus === 'CONNECTED' ? 'LIVE SYNC' : wsStatus === 'CONNECTING' ? 'RECONNECTING' : 'OFFLINE'}
+          </span>
         </div>
 
         {/* Integration Status Badge */}

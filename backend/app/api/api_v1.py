@@ -9,7 +9,10 @@ from backend.app.api.endpoints import (
     topology,
     alerts,
     services,
-    integration
+    integration,
+    events,
+    websocket,
+    simulation
 )
 
 api_router = APIRouter()
@@ -24,3 +27,6 @@ api_router.include_router(topology.router, tags=["Topology"])
 api_router.include_router(alerts.router, tags=["Alerts"])
 api_router.include_router(services.router, tags=["Network Services"])
 api_router.include_router(integration.router, tags=["Packet Tracer Integration"])
+api_router.include_router(events.router, tags=["Activity & Event Logs"])
+api_router.include_router(websocket.router, tags=["Live WebSockets"])
+api_router.include_router(simulation.router, tags=["Data Transfer Simulation"])

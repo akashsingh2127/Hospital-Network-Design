@@ -16,18 +16,107 @@ export interface Vlan {
   source: DataSource;
 }
 
+export interface InterfaceDetail {
+  name: string;
+  ip_address?: string | null;
+  subnet_mask?: string | null;
+  status: string; // UP, DOWN, ADMIN_DOWN
+  connected_to?: string | null;
+  link_type?: string | null;
+  vlan_id?: number | null;
+}
+
 export interface Device {
   id: string;
   name: string;
+  hostname?: string;
   device_type: 'ROUTER' | 'SWITCH' | 'SERVER' | 'AP' | 'PC';
   hospital_id: string;
   ip_address: string;
+  mac_address?: string | null;
   model?: string;
   role?: string;
   routing_protocol?: string;
   status: StatusLevel;
   source: DataSource;
   last_verified?: string;
+  last_observed_status?: string;
+  verification_status?: string;
+}
+
+export interface EventLog {
+  id: number;
+  event_id: string;
+  timestamp: string;
+  category: string;
+  event_type: string;
+  severity: SeverityLevel;
+  source: DataSource;
+  affected_device_id?: string | null;
+  hospital_id?: string | null;
+  interface_name?: string | null;
+  previous_state?: string | null;
+  new_state?: string | null;
+  description: string;
+  detection_method: string;
+  verification_status: string;
+  metadata?: Record<string, any> | null;
+}
+
+export interface DeviceDetail extends Device {
+  interfaces: InterfaceDetail[];
+  connected_devices: string[];
+  vlans: number[];
+  routing_info?: Record<string, any> | null;
+  recent_events: EventLog[];
+}
+
+export interface EventFilterParams {
+  category?: string;
+  severity?: string;
+  hospital_id?: string;
+  device_id?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface SimulationHop {
+  hop_number: number;
+  device_id: string;
+  device_name: string;
+  device_type: string;
+  hospital_id?: string;
+  interface_in?: string;
+  interface_out?: string;
+  action: string;
+  latency_ms: number;
+  details: string;
+}
+
+export interface SimulationFlow {
+  flow_id: string;
+  timestamp: string;
+  source_device_id: string;
+  source_device_name: string;
+  source_ip: string;
+  source_hospital: string;
+  dest_device_id: string;
+  dest_device_name: string;
+  dest_ip: string;
+  dest_hospital: string;
+  protocol: string;
+  status: 'DELIVERED' | 'DROPPED' | 'IN_TRANSIT';
+  total_latency_ms: number;
+  hops: SimulationHop[];
+  path_node_ids: string[];
+  path_edge_ids: string[];
+  summary: string;
+}
+
+export interface SimulationRequest {
+  source_device_id: string;
+  dest_device_id: string;
+  protocol: string;
 }
 
 export interface Hospital {
@@ -124,6 +213,8 @@ export interface DashboardSummary {
   unverified_devices: number;
   total_vlans: number;
   active_alerts_count: number;
+  recent_events_count?: number;
+  sync_status?: string;
   hospitals: Hospital[];
   recent_alerts: Alert[];
   services: NetworkService[];
@@ -138,6 +229,7 @@ export interface TopologyNode {
   ip?: string;
   status: StatusLevel;
   source: DataSource;
+  device_id?: string;
 }
 
 export interface TopologyEdge {
@@ -147,6 +239,7 @@ export interface TopologyEdge {
   label?: string;
   link_type: string;
   subnet?: string;
+  status?: string;
 }
 
 export interface TopologyData {

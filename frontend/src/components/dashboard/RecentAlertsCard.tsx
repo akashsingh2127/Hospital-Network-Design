@@ -16,11 +16,13 @@ import { api } from '../../services/api';
 interface RecentAlertsCardProps {
   alerts: Alert[];
   onAlertAcknowledged?: (alertId: number) => void;
+  onSelectDevice?: (deviceId: string) => void;
 }
 
 export const RecentAlertsCard: React.FC<RecentAlertsCardProps> = ({
   alerts: initialAlerts,
   onAlertAcknowledged,
+  onSelectDevice,
 }) => {
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   const [filterSource, setFilterSource] = useState<string>('ALL');
@@ -132,6 +134,14 @@ export const RecentAlertsCard: React.FC<RecentAlertsCardProps> = ({
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                       {alert.category}
                     </span>
+                    {alert.device_id && (
+                      <button
+                        onClick={() => onSelectDevice?.(alert.device_id!)}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800 hover:underline"
+                      >
+                        {alert.device_id}
+                      </button>
+                    )}
                     <span className="text-[11px] text-slate-400 font-mono">
                       {new Date(alert.timestamp).toLocaleTimeString()}
                     </span>

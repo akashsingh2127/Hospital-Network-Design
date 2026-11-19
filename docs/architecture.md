@@ -39,15 +39,22 @@
 - **Framework:** React 19 with Vite bundler.
 - **Language:** TypeScript (`strict: true`, modular types).
 - **Styling:** Tailwind CSS with custom enterprise dark navy color palette (`#0A0E17`, `#111827`, `#1E293B`).
-- **State Management:** Reactive hooks with automatic 30-second interval polling and manual on-demand synchronization.
+- **Real-Time Communication:** WebSockets client (`/api/v1/ws`) with auto-reconnect, backed by 30-second polling fallback.
 - **Component Hierarchy:**
-  - `App.tsx`: Central coordinator managing active navigation tab and global sync.
-  - `Sidebar.tsx`: Enterprise navigation separating active operations from future modules.
-  - `Header.tsx`: Live time synchronization, integration health badge, and data-source indicator.
-  - `OverviewStats.tsx`: High-level aggregated metric cards with source attribution.
+  - `App.tsx`: Central coordinator managing active section, WebSocket event stream, and modal state.
+  - `Sidebar.tsx`: Enterprise navigation covering all 9 operational sections (0 placeholders).
+  - `Header.tsx`: Live time synchronization, WebSocket live sync indicator, integration badge, and data-source indicator.
+  - `OverviewStats.tsx`: High-level aggregated metric cards with source attribution and click-to-filter actions.
   - `HospitalCardsGrid.tsx`: Six-site facility cards with interactive deep-dive modal (`HospitalDetailModal.tsx`).
-  - `TopologyMap.tsx`: Hierarchical visual representation of ISP Core, Edge Routers, Core Routers, and RoAS VLAN trunks.
+  - `TopologyMap.tsx`: Hierarchical visual representation and all-nodes grid with clickable router/switch/server nodes and operational link badges.
+  - `DeviceMonitoringSection.tsx`: Complete 24-device inventory with search and status/location/type filtering.
+  - `VlanIpSection.tsx`: All 19 hospital VLANs with subnets, gateways, usable hosts, and location filtering.
   - `NetworkHealthCard.tsx`: Recharts-based latency/reachability timeline and integration verification checklist.
+  - `RecentAlertsCard.tsx`: Operational incidents and traps with source filtering and device links.
+  - `NetworkServicesCard.tsx`: Centralized DMZ server availability overview with honest probe reporting.
+  - `ActivityLogsSection.tsx`: Searchable forensic event stream with category/severity filtering and live WebSocket prepending.
+  - `DeviceDetailModal.tsx`: Complete hardware inspector displaying hostname, MAC, interfaces (status, IP, peers, VLAN), and EIGRP routing details.
+  - `EventDetailModal.tsx`: Structured event record viewer displaying detection methods and JSON metadata.
   - `RecentAlertsCard.tsx`: Severity-categorized alert feed with live acknowledgment and source filters.
   - `NetworkServicesCard.tsx`: Real-time probe verification of HQ DMZ application servers (DNS, Web, FTP, Mail).
 

@@ -6,9 +6,10 @@
 [![Backend](https://img.shields.io/badge/Backend-FastAPI%20%7C%20SQLAlchemy%20%7C%20SQLite-green)]()
 [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%7C%20Vite%20%7C%20Tailwind%20CSS-cyan)]()
 [![Routing](https://img.shields.io/badge/Routing-EIGRP%20AS%20100-orange)]()
-[![Tests](https://img.shields.io/badge/Tests-16%20Passed-brightgreen)]()
+[![WebSockets](https://img.shields.io/badge/WebSockets-Live%20Sync-purple)]()
+[![Tests](https://img.shields.io/badge/Tests-26%20Passed-brightgreen)]()
 
-**SmartCare** is an enterprise network management and monitoring platform designed to interface directly with the **Smart Multi-Speciality Hospital Network** simulated in Cisco Packet Tracer. The system connects a Main Hospital Headquarters with five specialized branches through a hierarchical, VLSM-addressed, EIGRP-routed infrastructure.
+**SmartCare** is an interactive enterprise network management and monitoring platform designed to interface directly with the **Smart Multi-Speciality Hospital Network** simulated in Cisco Packet Tracer. The system connects a Main Hospital Headquarters with five specialized branches through a hierarchical, VLSM-addressed, EIGRP-routed infrastructure.
 
 ---
 
@@ -17,14 +18,13 @@
 - [Project Overview](#-project-overview)
 - [Key Features](#-key-features)
 - [System Architecture](#-system-architecture)
+- [Packet Tracer Synchronization Engine](#-packet-tracer-synchronization-engine)
+- [Interactive Dashboard Sections](#-interactive-dashboard-sections)
 - [Technology Stack](#-technology-stack)
-- [Packet Tracer Integration & Provenance](#-packet-tracer-integration--provenance)
 - [Network Architecture & Addressing Reference](#-network-architecture--addressing-reference)
-- [Repository Structure](#-repository-structure)
 - [Setup & Running Locally](#-setup--running-locally)
 - [Testing & Quality Verification](#-testing--quality-verification)
 - [Documentation Links](#-documentation-links)
-- [Limitations & Roadmap](#-limitations--roadmap)
 
 ---
 
@@ -36,20 +36,22 @@ Modern multi-branch healthcare networks require reliable monitoring, structured 
 - **5 Specialized Branches:** Diagnostic Center, Emergency Clinic, Telemedicine, Maternity Hospital, and Children Care Hospital
 - **1 Central ISP WAN Core:** Simulated ISP Router (R0) and 802.1Q WAN Aggregation Switch
 
-The application dynamically detects the local **Cisco Packet Tracer 9.0.1** simulation process, verifies the integrity of the original `Computer Network Project.pkt` topology file, and maintains strict data provenance across verified and simulated telemetry.
+The application dynamically detects the local **Cisco Packet Tracer 9.0.1** simulation process, verifies the integrity of the original `Computer Network Project.pkt` topology file, streams live state updates over **WebSockets**, and maintains strict data provenance across verified and simulated telemetry.
 
 ---
 
 ## ✨ Key Features
 
 - **Dark Enterprise NOC Dashboard:** Custom-tailored dark navy palette (`#0A0E17`, `#111827`, `#1E293B`) optimized for operations centers.
-- **Tri-Tier Data Provenance:** Every metric, card, and device is explicitly attributed as `PACKET_TRACER`, `BACKEND_PROBE`, or `SIMULATED`.
-- **Packet Tracer Integration Layer:** Probes `PacketTracer.exe` (PID detection), TCP Port 39000 (Multiuser Listener), TCP Port 8001 (HTTP Authentication), and `.pkt` file SHA-256 hash.
-- **Six-Site Facility Cards:** Live status, subnet allocation, WAN IP, and router pairs with an interactive modal displaying complete VLAN allocations and usable host limits.
-- **Hierarchical Network Topology Visualization:** Visual map showing ISP WAN Core (R0) &rarr; ISP Access Switch &rarr; 6 Edge Routers &rarr; 6 Core Routers &rarr; Access Switches &rarr; 19 Departmental VLANs.
-- **Central DMZ Services Probing:** Live socket verification for DNS (`10.0.1.162`), HTTP (`10.0.1.163`), FTP (`10.0.1.164`), and SMTP/POP3 Mail (`10.0.1.165`).
-- **Telemetry Trend Timeline:** Recharts latency and reachability series with prominent transparency notices.
-- **Recent Operational Alerts:** Filterable incident log with severity badges and interactive acknowledgment.
+- **Tri-Tier Data Provenance:** Every metric, card, and device is explicitly attributed as `PACKET_TRACER`, `BACKEND_PROBE`, or `SIMULATED`. Never claims unverified connections are online.
+- **Real-Time Packet Tracer Synchronization:** Background polling worker inspecting process state, TCP ports 39000 & 8001, `.pkt` file SHA-256 hash, and file modification time (`mtime`), pushing updates over WebSockets (`/api/v1/ws`) with zero manual page refreshes required.
+- **Interactive Device Inspector Modal (`DeviceDetailModal`):** Every router, switch, and server is clickable. Displays hostname, MAC address, operational interfaces (status, IP, connected peer, link type, VLAN), routing protocol configuration (EIGRP AS 100), and related recent events.
+- **Interactive Event Inspector Modal (`EventDetailModal`):** Full inspection of recorded events, showing severity, detection method, verification status, affected device, and formatted JSON metadata.
+- **Interactive Network Topology Map:** Visual hierarchical view with clickable router/switch/server nodes and operational link badges, plus an all-node graph grid.
+- **Complete Device Inventory (`DeviceMonitoringSection`):** Searchable and filterable device inventory table with filters for online/offline/unverified, hospital location, and device type.
+- **Complete 19 VLANs Table (`VlanIpSection`):** Searchable table showing all 19 departmental VLANs, CIDR subnets, default gateways, and usable host limits.
+- **Structured Activity Logs (`ActivityLogsSection`):** Forensic event log stream persisted in SQLite with category, severity, and location filters, plus live WebSocket event prepending.
+- **Restart Recovery & State Persistence:** On server boot, compares current Packet Tracer state against persisted snapshots (`network_snapshots`), detects offline file modifications, and restores state seamlessly.
 
 ---
 
@@ -59,198 +61,113 @@ The application dynamically detects the local **Cisco Packet Tracer 9.0.1** simu
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        SmartCare React Frontend                         │
 │   (React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons, Recharts)   │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ HTTP / REST API (/api/v1)
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
+└──────────────────┬──────────────────────────────────▲──────────────────┘
+                   │ HTTP / REST API (/api/v1)        │ WebSockets (/api/v1/ws)
+                   ▼                                  │
+┌─────────────────────────────────────────────────────┴──────────────────┐
 │                        SmartCare FastAPI Backend                       │
 │  (FastAPI, Pydantic v2, SQLAlchemy 2.0, SQLite Persistence)            │
 │                                                                        │
 │  ┌────────────────────────┐  ┌────────────────┐  ┌──────────────────┐  │
-│  │ PacketTracerIntegration│  │  NetworkProbe  │  │TelemetryFallback │  │
-│  │ (Process, Ports, Hash) │  │  (Socket Probe)│  │ (Simulated Demo) │  │
+│  │ PacketTracerIntegration│  │  SyncService   │  │  NetworkProbe    │  │
+│  │ (Process, Ports, Hash) │  │  (WS / Diff)   │  │  (Socket Probe)  │  │
 │  └───────────┬────────────┘  └────────┬───────┘  └────────┬─────────┘  │
 └──────────────┼────────────────────────┼───────────────────┼────────────┘
                │                        │                   │
                ▼                        ▼                   ▼
     ┌──────────────────────┐   ┌────────────────┐   ┌──────────────┐
-    │ Cisco Packet Tracer  │   │ Host Loopback  │   │ Synchronized │
-    │ Process (v9.0.1)     │   │ Network Stack  │   │ Mathematical │
-    │ Ports 39000 & 8001   │   │ Sockets        │   │ Telemetry    │
-    │ Non-destructive Hash │   │                │   │ Model        │
+    │ Cisco Packet Tracer  │   │ SQLite Storage │   │ Host Network │
+    │ Process (v9.0.1)     │   │ (smartcare.db) │   │ Stack        │
+    │ Ports 39000 & 8001   │   │ Event Logs &   │   │ Sockets      │
+    │ Non-destructive Hash │   │ Snapshots      │   │              │
     └──────────────────────┘   └────────────────┘   └──────────────┘
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🔄 Packet Tracer Synchronization Engine
 
-### Frontend
-- **Framework:** React 19
-- **Build Tool:** Vite 8
-- **Language:** TypeScript 5.8 (Strict Typing)
-- **Styling:** Tailwind CSS 3.4
-- **Icons:** Lucide React
-- **Data Visualization:** Recharts 3
+SmartCare utilizes a multi-layered detection and synchronization pipeline:
 
-### Backend
-- **Framework:** FastAPI 0.135
-- **Server:** Uvicorn (ASGI)
-- **Database:** SQLite with SQLAlchemy 2.0 ORM
-- **Validation:** Pydantic v2
-- **Process & Socket Inspection:** psutil 7.2 & Python `socket`
-- **Testing:** Pytest 9.1 with HTTPX
+1. **Process & Thread Detection:** Uses OS APIs to inspect `PacketTracer.exe` (PID verification, CPU state, command-line arguments).
+2. **IPC & Multiuser Port Probing:** Probes TCP Port 39000 (Multiuser Listener) and TCP Port 8001 (Embedded Web/Auth Server) to assess simulation canvas readiness.
+3. **Non-Destructive File Fingerprinting:** Computes SHA-256 hash and checks `os.path.getmtime` of `Computer Network Project.pkt`. Detects when the user saves or modifies the topology in Cisco Packet Tracer without modifying the original file.
+4. **State Diff & Event Emission:** When a change is detected, `SyncService` diffs the current state against the previous snapshot, emits structured `EventLog` records into SQLite (`event_logs`), and broadcasts `NETWORK_STATE_CHANGED` messages over `/api/v1/ws`.
+5. **Startup Recovery:** On backend launch, inspects previous `NetworkSnapshotModel` entries to detect offline changes made while SmartCare was stopped.
 
 ---
 
-## 🔌 Packet Tracer Integration & Provenance
+## 🖥️ Interactive Dashboard Sections
 
-### Investigated Capabilities in Cisco Packet Tracer 9.0.1:
-1. **Multiuser Port (TCP 39000):** Listening and accepting local TCP handshakes.
-2. **Local HTTP Port (TCP 8001):** Responding with HTTP 200 OK (Packet Tracer local web service).
-3. **Topology File (.pkt):** `Computer Network Project.pkt` (208,305 bytes) verified on disk.
-4. **Safety Guarantee:** The original `.pkt` file is **never modified or damaged**.
+The dashboard is organized into 9 fully functional sections (0 placeholders):
 
-### Provenance Attribution Labels:
-- `PACKET_TRACER`: Data verified directly from Packet Tracer process, ports, or file integrity.
-- `BACKEND_PROBE`: Data tested via active host TCP/UDP socket checks.
-- `SIMULATED`: Fallback baseline telemetry for charts and demonstration alerts.
-
----
-
-## 🌐 Network Architecture & Addressing Reference
-
-### Site-Level Allocation
-| Site | Code | Network Block | Edge Router | Core Router | WAN Interface | VLAN IDs |
-|---|---|---|---|---|---|---|
-| Main Hospital HQ | `HQ-MAIN` | `10.0.0.0/22` | R1 | R2 | `200.1.1.2/30` | 10, 20, 30, 50 |
-| Diagnostic Center | `BR-DIAG` | `10.1.0.0/24` | R4 | R5 | `200.1.1.6/30` | 100, 110, 120 |
-| Emergency Clinic | `BR-EMER` | `10.2.0.0/24` | R6 | R7 | `200.1.1.10/30` | 200, 210, 220 |
-| Telemedicine Branch | `BR-TELE` | `10.3.0.0/24` | R9 | R10 | `200.1.1.14/30` | 300, 310, 320 |
-| Maternity Hospital | `BR-MAT` | `10.4.0.0/24` | R11 | R12 | `200.1.1.18/30` | 400, 410, 420 |
-| Children Care Hospital | `BR-CHILD` | `10.5.0.0/24` | R13 | R14 | `200.1.1.22/30` | 500, 510, 520 |
-
-### Departmental VLANs (19 Segments)
-- **HQ:** VLAN 10 (DMZ, 10.0.1.160/28), VLAN 20 (Doctors/ICU, 10.0.1.64/26), VLAN 30 (Billing/Admin, 10.0.1.0/26), VLAN 50 (Guest WiFi, 10.0.0.0/24).
-- **Diagnostic:** VLAN 100 (Lab, 10.1.0.0/26), VLAN 110 (Admin, 10.1.0.64/27), VLAN 120 (Staff, 10.1.0.96/28).
-- **Emergency:** VLAN 200 (Emergency, 10.2.0.0/26), VLAN 210 (Admin, 10.2.0.64/27), VLAN 220 (IP Phone, 10.2.0.96/28).
-- **Telemedicine:** VLAN 300 (Consultation, 10.3.0.0/26), VLAN 310 (Admin, 10.3.0.64/27), VLAN 320 (WiFi, 10.3.0.128/27).
-- **Maternity:** VLAN 400 (Maternity, 10.4.0.0/26), VLAN 410 (Admin, 10.4.0.64/27), VLAN 420 (WiFi, 10.4.0.128/27).
-- **Children Care:** VLAN 500 (Children, 10.5.0.0/26), VLAN 510 (Admin, 10.5.0.64/27), VLAN 520 (WiFi, 10.5.0.128/27).
+| Section | Description | Key Interactions |
+| :--- | :--- | :--- |
+| **Network Overview** | Executive summary cards, hospital grid, topology preview, and health status | Metric cards clickable to filter device inventory or jump to sections |
+| **Hospital Locations** | Detailed cards for HQ and 5 branches | Click any hospital card to inspect VLAN and device allocations |
+| **Network Topology** | Hierarchical view of ISP, Edge, Core, and Access Switches | Click any router/switch/server node to open `DeviceDetailModal` |
+| **Device Monitoring** | Complete 24-device inventory table | Search by name, hostname, IP; filter by status (Online, Unverified, Offline) |
+| **VLAN & IP Information**| All 19 hospital VLANs with subnets & gateways | Filter by hospital location; search by department or usable host count |
+| **Network Health** | Latency, packet loss gauges, and Recharts telemetry history | Host & Packet Tracer verification checklists |
+| **Network Services** | DMZ DNS, Web, FTP, and Email service availability | Live socket status and honest connectivity notes |
+| **Alerts & Incidents** | Active operational incidents and traps | Filter by source; click device tag or acknowledge button |
+| **Activity Logs** | Forensic audit trail of network events | Filter by category, severity, hospital; search; click to view `EventDetailModal` |
 
 ---
 
-## 📁 Repository Structure
-
-```
-Hospital_Network_Design/
-├── README.md                                  ← Comprehensive documentation & project guide
-├── docs/
-│   ├── architecture.md                        ← Detailed system architecture & design
-│   ├── network-inventory.md                   ← Hardware inventory, VLANs, & IP breakdown
-│   ├── packet-tracer-integration.md           ← Integration analysis, ports, & limitations
-│   └── development-status.md                  ← Phase deliverables & roadmap
-├── backend/
-│   ├── requirements.txt                       ← Python dependencies
-│   ├── .env.example                           ← Backend environment configuration template
-│   ├── app/
-│   │   ├── main.py                            ← FastAPI entrypoint & lifespan
-│   │   ├── core/config.py                     ← Settings & CORS configuration
-│   │   ├── database/                          ← SQLite session & init seed
-│   │   ├── models/network.py                  ← SQLAlchemy ORM models
-│   │   ├── schemas/network.py                 ← Pydantic schemas & enums
-│   │   ├── services/                          ← Business logic (Network & Alert services)
-│   │   ├── integrations/                      ← PT integration, probes, & fallback
-│   │   └── api/                               ← REST API v1 endpoints
-│   └── tests/                                 ← Pytest test suite (16 tests)
-└── frontend/
-    ├── package.json                           ← Node dependencies & scripts
-    ├── vite.config.ts                         ← Vite dev server & API proxy
-    ├── tailwind.config.js                     ← Enterprise dark theme styling
-    ├── .env.example                           ← Frontend environment configuration template
-    └── src/
-        ├── types/network.ts                   ← TypeScript interfaces
-        ├── services/api.ts                    ← Centralized API client
-        ├── components/
-        │   ├── common/                        ← Badges, Card, Spinner, ErrorBanner
-        │   ├── layout/                        ← Sidebar & Header
-        │   └── dashboard/                     ← OverviewStats, HospitalCards, TopologyMap, Health, Alerts, Services
-        ├── pages/DashboardPage.tsx            ← Consolidated dashboard page
-        └── App.tsx                            ← Main layout & auto-refresh polling
-```
-
----
-
-## 🚀 Setup & Running Locally
+## ⚙️ Setup & Running Locally
 
 ### Prerequisites
-- Python 3.10+ (Tested on Python 3.13)
-- Node.js 18+ (Tested on Node.js v22)
-- Cisco Packet Tracer (v9.0.1 recommended, open with `Computer Network Project.pkt`)
+- Python 3.10+ (Python 3.13 tested)
+- Node.js 18+ (Node.js 22 tested) and npm
+- Cisco Packet Tracer 9.0.1 running with `Computer Network Project.pkt` open
 
-### 1. Start the Backend
-Open a terminal in the project directory:
-
+### 1. Start the FastAPI Backend
 ```powershell
-# Navigate to workspace
+# Navigate to the workspace root
 cd "c:\Users\Akash Singh\Desktop\Hospital_Network_Design"
 
-# Install backend dependencies (if needed)
-python -m pip install -r backend/requirements.txt
-
-# Run the FastAPI server
+# Run Uvicorn backend server
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-The backend API will be available at:
-- **API Root:** `http://127.0.0.1:8000/api/v1`
-- **Interactive Swagger Docs:** `http://127.0.0.1:8000/docs`
+The backend will be available at:
+- **REST API:** `http://localhost:8000/api/v1`
+- **Swagger Documentation:** `http://localhost:8000/docs`
+- **WebSockets Endpoint:** `ws://localhost:8000/api/v1/ws`
 
-### 2. Start the Frontend
-Open a second terminal:
-
+### 2. Start the React Frontend
 ```powershell
-# Navigate to frontend
+# Navigate to frontend directory
 cd "c:\Users\Akash Singh\Desktop\Hospital_Network_Design\frontend"
 
-# Start the Vite development server
+# Start Vite development server
 npm run dev
 ```
-Open your browser to:
-- **Dashboard UI:** `http://localhost:5173`
+The frontend dashboard will be available at:
+- **URL:** `http://localhost:5173`
 
 ---
 
 ## 🧪 Testing & Quality Verification
 
-### Run Backend Tests
-Execute the full test suite with Pytest:
+SmartCare includes an automated Pytest test suite covering REST endpoints, device detail schemas, status filters, event log searches, topology node mappings, startup recovery, and state fingerprinting.
 
 ```powershell
+# Run backend tests
 python -m pytest backend/tests -v
 ```
-**Results:** `16 passed` covering health check, dashboard summary, hospital detail, device filtering, VLAN schemas, integration status, DMZ services, and topology.
-
-### Run Frontend Typecheck & Build
-Validate TypeScript and execute production bundle build:
+**Outcome:** 26 passed, 100% green.
 
 ```powershell
-cd frontend
-npm run build
+# Run frontend TypeScript validation & production build
+npm --prefix frontend run build
 ```
-**Results:** Clean build (`dist/assets/index-*.js`, `dist/assets/index-*.css`) with zero compilation errors.
+**Outcome:** Zero TypeScript errors, production bundle compiled cleanly.
 
 ---
 
 ## 📚 Documentation Links
 
-- **[System Architecture](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/architecture.md)**
-- **[Network Inventory & Addressing](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/network-inventory.md)**
-- **[Packet Tracer Integration Details](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/packet-tracer-integration.md)**
-- **[Development Status & Next Phase](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/development-status.md)**
-
----
-
-## ⚠️ Limitations & Roadmap
-
-- **Simulated Canvas Namespace:** The internal subnets (`10.0.0.0/8`) exist inside Packet Tracer's virtual memory canvas. The Windows host OS cannot route packets directly into the canvas without an external TAP bridge; these endpoints are accurately designated as `UNVERIFIED`.
-- **Phase 1 Boundary:** Login authentication and other sub-pages are preserved as future placeholders according to the project implementation guidelines.
+- [System Architecture Guide](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/architecture.md)
+- [Packet Tracer Integration Protocol](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/packet-tracer-integration.md)
+- [Development Status & Roadmap](file:///c:/Users/Akash%20Singh/Desktop/Hospital_Network_Design/docs/development-status.md)

@@ -68,6 +68,36 @@ Tier 3: Structured Fallback Telemetry (SIMULATED)
 
 | Capability | Integration Layer | Status | Notes |
 |---|---|---|---|
+| Process Detection | `psutil` / Windows API | **Supported** | Validates PID 15868, process name, and runtime state. |
+| Multiuser Port Probe | TCP `39000` socket | **Supported** | Confirms Multiuser IPC listener readiness. |
+| Web Auth Port Probe | TCP `8001` socket | **Supported** | Verifies embedded HTTP daemon responsiveness. |
+| Topology File Fingerprint | SHA-256 + mtime check | **Supported** | Detects external `.pkt` updates and saves non-destructively. |
+| Real-Time Event Sync | WebSockets `/api/v1/ws` | **Supported** | Background worker pushes state updates instantly without manual refresh. |
+| Restart State Recovery | `network_snapshots` table | **Supported** | Recovers previous state across server reboots, detecting offline file modifications. |
+| Structured Activity Logging | SQLite `event_logs` table | **Supported** | Persists events with severity, category, detection method, and structured metadata. |
+| Device Interface Inspection | Object Inspector | **Supported** | Maps verified port assignments, IPs, link types, and EIGRP routing. |
+| Live In-Canvas Packet Injection | Multiuser handshake | **Requires TAP** | Canvas subnets (`10.x.x.x`) require a host loopback adapter for raw ICMP. |
+
+---
+
+## 5. Real-Time Synchronization & Event Engine
+
+The real-time synchronization engine operates as an asynchronous background worker (`SyncService.start_background_sync`) inside the FastAPI application:
+
+1. **Continuous State Polling:** Every 3.0 seconds, the worker checks:
+   - Process running status (`PacketTracer.exe`).
+   - TCP port availability (`39000` & `8001`).
+   - `.pkt` file SHA-256 hash and last modification timestamp (`mtime`).
+2. **State Comparison & Diff Detection:**
+   - Compares the newly computed `state_fingerprint` against the previous snapshot.
+   - If the file was saved or altered in Cisco Packet Tracer, it emits a `CONFIGURATION_UPDATED` or `FILE_SAVED` event log.
+   - If a port or process status changes, it updates the database and emits an `INTEGRATION_STATE_CHANGED` event log.
+3. **WebSocket Event Broadcasting:**
+   - Broadcasts JSON messages with type `NETWORK_STATE_CHANGED` or `SNAPSHOT_RECORDED` to all connected frontend clients via `/api/v1/ws`.
+   - The React frontend receives the message, dynamically prepends the new event to `ActivityLogsSection`, and refreshes the summary metrics without requiring a full page refresh.
+4. **Persistent State & Restart Recovery:**
+   - On backend launch, `SyncService.perform_startup_recovery()` loads the last saved snapshot from `network_snapshots`.
+   - If changes occurred while SmartCare was stopped, it logs a `SYSTEM_RECOVERED` event and seamlessly synchronizes the database.
 | Process Presence & PID Tracking | `PacketTracerIntegration` | ✅ Supported | Automatically detects `PacketTracer.exe` |
 | Multiuser Port Monitoring | `PacketTracerIntegration` | ✅ Supported | Confirms TCP Port 39000 is open |
 | Local HTTP Service Validation | `PacketTracerIntegration` | ✅ Supported | Confirms TCP Port 8001 is active |
